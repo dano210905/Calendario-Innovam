@@ -1,0 +1,155 @@
+@*
+    Login.razor - Página de inicio de sesión.
+
+    CONCEPTOS BLAZOR:
+    - @page "/login"          -> Define la URL de esta página
+    - @layout EmptyLayout     -> Usa un layout vacío (sin sidebar) porque el login no necesita menú
+    - @inject AuthService     -> Inyecta el servicio de autenticación (Dependency Injection)
+    - @inject NavigationManager -> Para redirigir a otra página después del login
+    - @rendermode InteractiveServer -> Necesario para que @onclick y @bind funcionen (SignalR)
+    - @bind="email"           -> Two-way binding: sincroniza la variable con el input
+    - @onclick="DoLogin"      -> Al hacer clic, ejecuta el método DoLogin()
+
+    FLUJO:
+    1. Usuario escribe email y contraseña
+    2. Clic en "Iniciar sesión" -> llama DoLogin()
+    3. DoLogin() llama auth.Login() que verifica con BCrypt en la API
+    4. Si OK -> redirige a "/" (inicio)
+    5. Si debe cambiar contraseña -> redirige a "/cambiar-contrasena"
+    6. Si falla -> muestra error en alerta roja
+*@
+
+@page "/login"
+@layout FrontBlazorTutorial.Components.Layout.EmptyLayout
+@inject FrontBlazorTutorial.Services.AuthService auth
+@inject NavigationManager nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<link rel="stylesheet" href="css/login.css" />
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-icon">
+                @if (!string.IsNullOrEmpty(avatarPerfil))
+                {
+                    <img src="@avatarPerfil" alt="Avatar" class="login-avatar" />
+                }
+                else
+                {
+                    <i class="bi bi-box-arrow-in-right"></i>
+                }
+            </div>
+            <h2 class="login-title">Bienvenido</h2>
+            <p class="login-subtitle">Inicia sesión para continuar</p>
+        </div>
+
+        <div class="login-body">
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="alert-modern alert-danger-modern">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    @error
+                    <button type="button" class="alert-close" @onclick='() => error = ""'>
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            }
+
+            <div class="input-group-modern">
+                <div class="input-icon">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <div class="input-field">
+                    <input type="email" class="form-control-modern" @bind="email" placeholder=" " />
+                    <label class="input-label-modern">Correo electrónico</label>
+                </div>
+            </div>
+
+            <div class="input-group-modern">
+                <div class="input-icon">
+                    <i class="bi bi-lock"></i>
+                </div>
+                <div class="input-field">
+                    <input type="password" class="form-control-modern" @bind="contrasena" 
+                           @onkeypress="OnKeyPress" placeholder=" " />
+                    <label class="input-label-modern">Contraseña</label>
+                </div>
+            </div>
+
+            <button class="btn-login" @onclick="DoLogin" disabled="@cargando">
+                @if (cargando)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                else
+                {
+                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                }
+                @(cargando ? "Iniciando sesión..." : "Iniciar sesión")
+            </button>
+
+            <div class="login-links">
+                <a href="/recuperar-contrasena" class="login-link">
+                    <i class="bi bi-question-circle"></i> ¿Olvidaste tu contraseña?
+                </a>
+                <a href="/registro de usuario" class="login-link">
+                    <i class="bi bi-person-plus"></i> Crear cuenta nueva
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    string email = "", contrasena = "", error = "";
+    bool cargando;
+    string avatarPerfil = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAvatarDesdeLocalStorage();
+    }
+
+    private async Task CargarAvatarDesdeLocalStorage()
+    {
+        try
+        {
+            var avatar = await JS.InvokeAsync<string>("localStorage.getItem", "user_avatar");
+            if (!string.IsNullOrEmpty(avatar))
+            {
+                avatarPerfil = avatar;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar avatar: {ex.Message}");
+        }
+    }
+
+    async Task DoLogin()
+    {
+        error = "";
+        cargando = true;
+        var (ok, msg) = await auth.Login(email, contrasena);
+        cargando = false;
+        if (ok)
+        {
+            // Si recuperó contraseña, forzar cambio
+            if (auth.DebeCambiarContrasena || auth.DebeForcarCambio(email))
+            {
+                auth.DebeCambiarContrasena = true;
+                nav.NavigateTo("/cambiar-contrasena", forceLoad: false);
+            }
+            else
+                nav.NavigateTo("/", forceLoad: false);
+        }
+        else error = msg;
+    }
+
+    async Task OnKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await DoLogin();
+    }
+}

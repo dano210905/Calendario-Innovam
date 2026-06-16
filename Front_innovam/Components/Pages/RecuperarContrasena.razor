@@ -1,0 +1,483 @@
+@*
+    RecuperarContrasena.razor - Formulario para recuperar contraseña olvidada.
+
+    CÓMO FUNCIONA:
+    1. El usuario ingresa su email
+    2. El AuthService busca el usuario en la BD
+    3. Genera contraseña temporal aleatoria (ej: "Ak7xPm2q")
+    4. La guarda encriptada con BCrypt en la BD (la anterior se pierde)
+    5. Intenta enviarla por correo SMTP (si está configurado en appsettings.json)
+    6. En el próximo login, el sistema FUERZA cambio de contraseña
+
+    NOTA DE SEGURIDAD:
+    - Esta página usa EmptyLayout (sin sidebar) porque el usuario no está logueado
+    - Es la única página (además de /login) accesible sin autenticación
+
+    SMTP:
+    - Si SMTP no está configurado, muestra la temporal en pantalla (para desarrollo)
+    - En producción, configurar Smtp:User y Smtp:Pass en appsettings.json
+*@
+
+@page "/recuperar-contrasena"
+@layout FrontBlazorTutorial.Components.Layout.EmptyLayout
+@inject FrontBlazorTutorial.Services.AuthService auth
+@inject NavigationManager nav
+@inject IConfiguration config
+@rendermode InteractiveServer
+
+<div class="recuperar-container">
+    <div class="recuperar-card">
+        <div class="recuperar-header">
+            <div class="recuperar-icon">
+                <i class="bi bi-key"></i>
+            </div>
+            <h2 class="recuperar-title">Recuperar contraseña</h2>
+            <p class="recuperar-subtitle">Te enviaremos una contraseña temporal</p>
+        </div>
+
+        <div class="recuperar-body">
+            @if (!string.IsNullOrEmpty(mensaje))
+            {
+                if (tipoMensaje == "success")
+                {
+                    <div class="alert-modern alert-success-modern">
+                        <i class="bi bi-check-circle-fill"></i>
+                        @mensaje
+                        <button type="button" class="alert-close" @onclick="IrAlLogin">
+                            <i class="bi bi-box-arrow-in-right"></i> Iniciar sesión
+                        </button>
+                    </div>
+                }
+                else if (tipoMensaje == "danger")
+                {
+                    <div class="alert-modern alert-danger-modern">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        @mensaje
+                        <button type="button" class="alert-close" @onclick='() => mensaje = ""'>
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert-modern alert-info-modern">
+                        <i class="bi bi-info-circle-fill"></i>
+                        @mensaje
+                        <button type="button" class="alert-close" @onclick='() => mensaje = ""'>
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                }
+            }
+
+            <p class="recuperar-info">
+                <i class="bi bi-info-circle"></i>
+                Ingresa tu correo electrónico y te enviaremos una contraseña temporal para acceder a tu cuenta.
+            </p>
+
+            <div class="input-group-modern">
+                <div class="input-icon">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <div class="input-field">
+                    <input type="email" class="form-control-modern" @bind="email" placeholder=" " 
+                           @onkeypress="OnKeyPress" />
+                    <label class="input-label-modern">Correo electrónico</label>
+                </div>
+            </div>
+
+            <button class="btn-recuperar" @onclick="Recuperar" disabled="@cargando">
+                @if (cargando)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                else
+                {
+                    <i class="bi bi-envelope-paper me-2"></i>
+                }
+                @(cargando ? "Enviando..." : "Enviar contraseña temporal")
+            </button>
+
+            <div class="recuperar-footer">
+                <a href="/login" class="recuperar-link">
+                    <i class="bi bi-arrow-left"></i> Volver al inicio de sesión
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .recuperar-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #021e49 0%, #1a3a6e 50%, #2c4a8a 100%);
+        position: relative;
+        overflow: hidden;
+        padding: 20px;
+    }
+
+    /* Decoración de fondo */
+    .recuperar-container::before {
+        content: '';
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        top: -150px;
+        right: -150px;
+    }
+
+    .recuperar-container::after {
+        content: '';
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 50%;
+        bottom: -250px;
+        left: -250px;
+    }
+
+    .recuperar-card {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 450px;
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .recuperar-header {
+        background: linear-gradient(135deg, #021e49 0%, #1a3a6e 100%);
+        padding: 32px 24px;
+        text-align: center;
+        position: relative;
+    }
+
+    .recuperar-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+
+    .recuperar-icon {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        font-size: 32px;
+        color: white;
+    }
+
+    .recuperar-title {
+        color: white;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
+    }
+
+    .recuperar-subtitle {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .recuperar-body {
+        padding: 32px 28px;
+    }
+
+    .recuperar-info {
+        background: #f0fdf4;
+        border-left: 4px solid #22c55e;
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 13px;
+        color: #166534;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .recuperar-info i {
+        font-size: 18px;
+    }
+
+    /* Alertas modernas */
+    .alert-modern {
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        animation: shake 0.4s ease;
+        flex-wrap: wrap;
+    }
+
+    @@keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    .alert-success-modern {
+        background: #ecfdf5;
+        border-left: 4px solid #10b981;
+        color: #065f46;
+    }
+
+    .alert-danger-modern {
+        background: #fef2f2;
+        border-left: 4px solid #dc2626;
+        color: #991b1b;
+    }
+
+    .alert-info-modern {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        color: #1e40af;
+    }
+
+    .alert-close {
+        margin-left: auto;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .alert-close:hover {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    /* Inputs modernos */
+    .input-group-modern {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        align-items: flex-start;
+    }
+
+    .input-icon {
+        width: 48px;
+        height: 48px;
+        background: #f3f4f6;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #021e49;
+        font-size: 20px;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .input-group-modern:focus-within .input-icon {
+        background: #e0e7ff;
+        color: #021e49;
+    }
+
+    .input-field {
+        flex: 1;
+        position: relative;
+    }
+
+    .form-control-modern {
+        width: 100%;
+        padding: 14px 12px 6px 12px;
+        font-size: 16px;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        background: white;
+        transition: all 0.2s ease;
+        outline: none;
+    }
+
+    .form-control-modern:focus {
+        border-color: #021e49;
+        box-shadow: 0 0 0 3px rgba(2, 30, 73, 0.1);
+    }
+
+    .input-label-modern {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: white;
+        padding: 0 4px;
+        color: #9ca3af;
+        font-size: 16px;
+        transition: all 0.2s ease;
+        pointer-events: none;
+    }
+
+    .form-control-modern:focus + .input-label-modern,
+    .form-control-modern:not(:placeholder-shown) + .input-label-modern {
+        top: 0;
+        font-size: 11px;
+        color: #021e49;
+        transform: translateY(-50%);
+    }
+
+    /* Botón de recuperar */
+    .btn-recuperar {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #021e49 0%, #1a3a6e 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-recuperar:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(2, 30, 73, 0.3);
+    }
+
+    .btn-recuperar:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .btn-recuperar:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    /* Footer */
+    .recuperar-footer {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        text-align: center;
+    }
+
+    .recuperar-link {
+        color: #6b7280;
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .recuperar-link:hover {
+        color: #021e49;
+        text-decoration: underline;
+    }
+
+    /* Responsive */
+    @@media (max-width: 480px) {
+        .recuperar-card {
+            max-width: 95%;
+        }
+
+        .recuperar-body {
+            padding: 24px 20px;
+        }
+
+        .input-group-modern {
+            gap: 8px;
+        }
+
+        .input-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+        }
+
+        .recuperar-title {
+            font-size: 24px;
+        }
+    }
+</style>
+
+@code {
+    string email = "", mensaje = "", tipoMensaje = "info";
+    bool cargando;
+
+    void IrAlLogin()
+    {
+        nav.NavigateTo("/login");
+    }
+
+    async Task Recuperar()
+    {
+        mensaje = "";
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            tipoMensaje = "danger";
+            mensaje = "Ingrese su correo electrónico.";
+            return;
+        }
+
+        cargando = true;
+        // Llama al AuthService que:
+        // 1. Verifica que el email exista
+        // 2. Genera temporal aleatoria
+        // 3. La guarda con BCrypt
+        // 4. Intenta enviar por SMTP
+        var (ok, msg) = await auth.RecuperarContrasena(email, config);
+        cargando = false;
+
+        tipoMensaje = ok ? "success" : "danger";
+        mensaje = msg;
+    }
+
+    async Task OnKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Recuperar();
+    }
+}

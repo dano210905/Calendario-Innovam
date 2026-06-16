@@ -1,0 +1,498 @@
+@page "/rol-usuario"
+@rendermode InteractiveServer
+@inject FrontBlazorTutorial.Services.ApiService Api
+@inject IJSRuntime JS
+
+<PageTitle>Gestión de Roles</PageTitle>
+
+<div class="container-fluid min-vh-100 px-4 pt-5" style="background: linear-gradient(135deg, #021e49 0%, #1a3a6e 50%, #2c4a8a 100%); 
+            display: flex; 
+            flex-direction: column; 
+            margin-left: -2rem !important; 
+            margin-right: -2rem !important; 
+            margin-top: -2rem !important;
+            padding-top: 3.5rem !important;
+            width: calc(100% + 4rem) !important; 
+            min-width: calc(100% + 4rem) !important;">
+    <div class="mb-4">
+        <h3 class="text-primary"><i class="bi bi-shield-lock"></i> Asignación de Roles</h3>
+        <p class="text-muted">Visualice los usuarios y modifique su nivel de acceso.</p>
+
+        <div class="admin-shortcut-container mb-4">
+            <a href="/admin/usuarios" class="admin-shortcut-card">
+                <div class="shortcut-icon">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div class="shortcut-content">
+                    <span class="shortcut-title">Administrar Cuentas</span>
+                    <span class="shortcut-desc">Eliminar usuarios y ver datos personales</span>
+                </div>
+                <div class="shortcut-arrow">
+                    <i class="bi bi-chevron-right"></i>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body py-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+
+                <div class="d-flex align-items-center position-relative flex-grow-1" style="max-width: 450px;">
+                    <i class="bi bi-search position-absolute text-muted" style="left: 15px; z-index: 5;"></i>
+                    <input class="form-control rounded-pill" type="text" placeholder="Buscar por ID, correo o rol..."
+                        style="padding-left: 40px; height: 42px; background-color: #f8fafc; border-color: #cbd5e1;"
+                        @bind="textoBusqueda" @bind:event="oninput" @onkeyup="FiltrarRoles" />
+                </div>
+
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary rounded-pill px-3 py-2 fs-6 shadow-sm">
+                        Total: @registrosVisibles.Count
+                    </span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Correo Electrónico (Usuario)</th>
+                            <th>Rol Asignado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var reg in registrosVisibles)
+                        {
+                            <tr>
+                                <td class="fw-bold">@reg["id"]</td>
+                                <td>@reg["fkemail"]</td>
+                                <td>
+                                    @if (idEditando == reg["id"]?.ToString())
+                                    {
+                                        <select class="form-select form-select-sm" @bind="nuevoRolId">
+                                            @foreach (var rol in rolesDisponibles)
+                                            {
+                                                <option value="@rol["id"]">@rol["id"] - @rol["nombre"]</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info">ID Rol: @reg["fkidrol"]</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (idEditando == reg["id"]?.ToString())
+                                    {
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <button class="btn btn-success btn-sm px-3" @onclick="() => GuardarCambio(reg)">
+                                                <i class="bi bi-check-lg"></i> Guardar
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm px-3" @onclick="() => idEditando = null">
+                                                <i class="bi bi-x-lg"></i> Cancelar
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-warning btn-sm w-100" style="max-width: 120px;"
+                                            @onclick="() => IniciarEdicion(reg)">
+                                            <i class="bi bi-pencil"></i> Cambiar Rol
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    /*variables*/
+    :root {
+        --navy: #021e49;
+        --navy-mid: #1a3a6e;
+        --accent: #667eea;
+        --accent-2: #0021db;
+        --radius: 12px;
+        --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* fondo*/
+    .container {
+        background: linear-gradient(135deg, #021e49 0%, #1a3a6e 50%, #2c4a8a 100%);
+        min-height: 100vh;
+        max-width: 100% !important;
+        padding: 32px 24px !important;
+        margin: 0 !important;
+    }
+
+    /*Titulo*/
+    .text-primary {
+        color: #ffffff !important;
+    }
+
+    .text-muted {
+        color: rgba(255, 255, 255, 0.65) !important;
+    }
+
+    /* botones*/
+    .btn-primary,
+    .btn-success {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%) !important;
+        border: none !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+
+    .btn-primary:hover,
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(2, 30, 73, 0.35) !important;
+    }
+
+    .btn-outline-primary {
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+
+    .btn-outline-primary:hover {
+        background: var(--accent) !important;
+        color: white !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: #e2e8f0 !important;
+        border: none !important;
+        color: #475569 !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+    }
+
+    .btn-warning {
+        background: #fef3c7 !important;
+        border: 1px solid #fcd34d !important;
+        color: #92400e !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+
+    .btn-warning:hover {
+        background: #fde68a !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-danger {
+        background: #fee2e2 !important;
+        border: 1px solid #ff1818 !important;
+        color: #361b99 !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+
+    .btn-danger:hover {
+        background: #fecaca !important;
+        transform: translateY(-1px);
+    }
+
+    /*hector me la chupa en reversa(tabla)*/
+    .card {
+        border-radius: 20px !important;
+        overflow: hidden !important;
+        border: none !important;
+        box-shadow: 0 20px 50px rgba(2, 30, 73, 0.18) !important;
+        animation: fadeUp 0.4s ease-out;
+    }
+
+    .card-header.bg-gradient-primary {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%) !important;
+        position: relative;
+        padding: 20px 24px !important;
+    }
+
+    .card-header.bg-gradient-primary::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .card-header h4 {
+        font-weight: 700;
+        font-size: 17px;
+    }
+
+
+    .table-dark {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid)) !important;
+    }
+
+    .table-dark th {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        padding: 14px 20px !important;
+        border: none !important;
+    }
+
+    .table tbody td {
+        padding: 14px 20px !important;
+        vertical-align: middle !important;
+        border-color: #f1f5f9 !important;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8fafc !important;
+        transition: var(--transition) !important;
+    }
+
+
+    .badge.bg-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+        border-radius: 999px !important;
+        padding: 6px 14px !important;
+        font-size: 13px !important;
+    }
+
+    .badge.bg-info {
+        background: #eff6ff !important;
+        color: #1d4ed8 !important;
+        border: 1px solid #bfdbfe !important;
+        border-radius: 999px !important;
+        padding: 5px 12px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+    }
+
+    .form-control,
+    .form-select {
+        border: 2px solid #e2e8f0 !important;
+        border-radius: var(--radius) !important;
+        padding: 10px 14px !important;
+        font-size: 14px !important;
+        transition: var(--transition) !important;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--navy) !important;
+        box-shadow: 0 0 0 3px rgba(2, 30, 73, 0.08) !important;
+    }
+
+    .form-label.fw-bold {
+        color: #475569 !important;
+        font-size: 13px !important;
+    }
+
+    .alert-success {
+        background: #ecfdf5 !important;
+        border-left: 4px solid #10b981 !important;
+        border-radius: var(--radius) !important;
+        color: #065f46 !important;
+        border-top: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+    .alert-danger {
+        background: #fef2f2 !important;
+        border-left: 4px solid #dc2626 !important;
+        border-radius: var(--radius) !important;
+        color: #991b1b !important;
+        border-top: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+    .alert-warning {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: var(--radius) !important;
+        color: rgba(255, 255, 255, 0.85) !important;
+    }
+
+    .alert-info {
+        background: #eff6ff !important;
+        border-left: 4px solid #3b82f6 !important;
+        border-radius: var(--radius) !important;
+        color: #1e40af !important;
+        border-top: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+
+    .modal-backdrop {
+        background-color: rgba(2, 30, 73, 0.55) !important;
+        backdrop-filter: blur(4px) !important;
+    }
+
+    .modal-content {
+        border-radius: 20px !important;
+        border: none !important;
+        overflow: hidden !important;
+    }
+
+    .modal-header.bg-gradient-primary {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%) !important;
+        position: relative;
+    }
+
+    .modal-header.bg-gradient-primary::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .modal-footer {
+        background: #f8fafc !important;
+        border-top: 1px solid #e2e8f0 !important;
+    }
+
+    .btn-close-white {
+        filter: brightness(10);
+    }
+
+    .spinner-border.text-primary {
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        border-top-color: white !important;
+    }
+
+    /* ── ANIMACIÓN ── */
+    @@keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 640px) {
+        .container {
+            padding: 16px 12px !important;
+        }
+
+        .card-header h4 {
+            font-size: 15px;
+        }
+    }
+</style>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> rolesDisponibles = new();
+
+    private List<Dictionary<string, object?>> registrosVisibles = new();
+    private string textoBusqueda = "";
+    private bool cargando = true;
+    private string? idEditando = null;
+    private int nuevoRolId;
+    private string mensaje = "";
+    private bool exito = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        // Cargamos los registros de la tabla intermedia
+        registros = await Api.ListarAsync("rol_usuario", null);
+        // Cargamos los roles de la tabla 'rol' para el desplegable
+        rolesDisponibles = await Api.ListarAsync("rol", null);
+
+        FiltrarRoles();
+        cargando = false;
+    }
+
+    private void FiltrarRoles()
+    {
+        if (string.IsNullOrWhiteSpace(textoBusqueda))
+        {
+            registrosVisibles = registros;
+        }
+        else
+        {
+            registrosVisibles = registros.Where(reg =>
+            (reg.ContainsKey("id") && reg["id"]?.ToString()?.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) == true) ||
+            (reg.ContainsKey("correo_electronico") && reg["correo_electronico"]?.ToString()?.Contains(textoBusqueda,
+            StringComparison.OrdinalIgnoreCase) == true) ||
+            (reg.ContainsKey("rol_asignado") && reg["rol_asignado"]?.ToString()?.Contains(textoBusqueda,
+            StringComparison.OrdinalIgnoreCase) == true)
+            ).ToList();
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object?> reg)
+    {
+        idEditando = reg["id"]?.ToString();
+        nuevoRolId = Convert.ToInt32(reg["fkidrol"]);
+    }
+
+    private async Task GuardarCambio(Dictionary<string, object?> reg)
+    {
+        var datos = new Dictionary<string, object?>
+        {
+            ["fkidrol"] = nuevoRolId,
+            ["fkemail"] = reg["fkemail"] // Mantenemos el email original
+        };
+
+        var r = await Api.ActualizarAsync("rol_usuario", "id", reg["id"]?.ToString() ?? "", datos);
+
+        exito = r.exito;
+        mensaje = r.mensaje;
+
+        if (exito)
+        {
+            idEditando = null;
+            await CargarDatos();
+        }
+    }
+}

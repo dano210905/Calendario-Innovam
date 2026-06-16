@@ -1,0 +1,181 @@
+@*
+    MainLayout.razor - Layout principal (sidebar + barra superior + contenido).
+
+    COMO FUNCIONA LA AUTENTICACION AQUI:
+    =====================================
+    1. Al cargar cualquier pagina, OnAfterRenderAsync se ejecuta
+    2. Llama _auth.Restaurar() para recuperar la sesion del navegador
+    3. Si no hay sesion -> redirige a /login
+    4. Si debe cambiar contrasena -> redirige a /cambiar-contrasena
+    5. Verifica si el usuario tiene permiso para la ruta actual (TieneAcceso)
+    6. Si no tiene permiso -> redirige a /sin-acceso
+    7. Muestra spinner mientras restaura (evita flash de contenido)
+    8. Barra superior muestra nombre del usuario + boton "Cerrar sesion"
+    9. Al navegar a otra pagina, vuelve a verificar permisos (LocationChanged)
+
+    QUE ES OnAfterRenderAsync:
+    ==========================
+    Es un metodo de ciclo de vida de Blazor que se ejecuta DESPUES de
+    renderizar el componente. Se usa porque ProtectedSessionStorage
+    solo esta disponible despues del primer render (necesita JavaScript).
+*@
+
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject FrontBlazorTutorial.Services.AuthService _auth
+@inject NavigationManager _nav
+@inject IJSRuntime _js
+
+
+@if (_cargando)
+{
+    <div class="d-flex justify-content-center align-items-center" style="min-height:100vh">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+
+        <main>
+            <div class="top-row px-4 d-flex justify-content-between align-items-center">
+                @*<span>Frontend Blazor — API GenericaCsharp</span>*@
+                @* Botón de acceso directo a la gestión de roles *@
+                <a href="/rol-usuario" class="btn btn-sm btn-warning shadow-sm">
+                    <i class="bi bi-shield-lock-fill"></i> Gestion de usuarios
+                </a>
+                @if (_auth.EstaAutenticado)
+                {
+                    <div class="d-flex align-items-center gap-3">
+                        @if (!string.IsNullOrEmpty(_auth.AvatarUrl))
+                        {
+                            <img src="@_auth.AvatarUrl" alt="Avatar"
+                                 style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #dee2e6;" />
+                        }
+                        else
+                        {
+                            <div style="width:36px;height:36px;border-radius:50%;background:#021e49;display:flex;align-items:center;justify-content:center;">
+                                <i class="bi bi-person-fill" style="color:white;font-size:18px;"></i>
+                            </div>
+                        }
+                        <small style="color: #021e49;">@(_auth.NombreUsuario ?? _auth.Usuario)</small>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="_Logout">Cerrar sesion</button>
+                    </div>
+                }
+                else
+                {
+                    <a href="/login" class="btn btn-sm btn-outline-primary">Iniciar sesion</a>
+                }
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _cargando = true;
+
+    protected override void OnInitialized()
+    {
+        // Escuchar cambios de navegacion para verificar permisos en cada pagina
+        _nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _auth.Restaurar();
+
+            // Cargar avatar desde localStorage (donde Registro.razor lo guarda)
+            // Si la sesion no lo tenia, intentar leerlo de localStorage como fallback
+            if (string.IsNullOrEmpty(_auth.AvatarUrl))
+            {
+                try
+                {
+                    var avatarLocal = await _js.InvokeAsync<string>("localStorage.getItem", "user_avatar");
+                    if (!string.IsNullOrEmpty(avatarLocal))
+                        _auth.AvatarUrl = avatarLocal;
+                }
+                catch { }
+            }
+
+            _cargando = false;
+
+            // 1. Sin sesion -> login
+            if (!_auth.EstaAutenticado && !_nav.Uri.Contains("/login"))
+            {
+                _nav.NavigateTo("/login");
+                return;
+            }
+
+            // 2. Debe cambiar contrasena -> forzar
+            if (_auth.DebeCambiarContrasena && !_nav.Uri.Contains("/cambiar-contrasena"))
+            {
+                _nav.NavigateTo("/cambiar-contrasena");
+                return;
+            }
+
+            // 3. Verificar si tiene acceso a la ruta actual
+            VerificarAcceso();
+
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Se ejecuta CADA VEZ que el usuario navega a otra pagina.
+    /// Verifica si tiene permiso para la nueva ruta.
+    /// Sin esto, el usuario podria escribir la URL manualmente y acceder.
+    /// </summary>
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        VerificarAcceso();
+    }
+
+    /// <summary>
+    /// Extrae la ruta del URL actual y verifica con TieneAcceso().
+    /// Ejemplo: "http://localhost:5003/facultad" -> extrae "/facultad"
+    /// Si no tiene permiso -> redirige a /sin-acceso
+    /// </summary>
+    private void VerificarAcceso()
+    {
+        if (!_auth.EstaAutenticado) return;
+
+        // Extraer la ruta del URL completo
+        var uri = new Uri(_nav.Uri);
+        var ruta = uri.AbsolutePath; // ej: "/facultad"
+
+        // Rutas que siempre son accesibles (no verificar)
+        if (ruta == "/" || ruta == "/login" || ruta == "/sin-acceso" ||
+        ruta == "/cambiar-contrasena" || ruta == "/recuperar-contrasena")
+            return;
+
+        // Verificar si el usuario tiene permiso
+        if (!_auth.TieneAcceso(ruta))
+            _nav.NavigateTo("/sin-acceso");
+    }
+
+    private async Task _Logout()
+    {
+        await _auth.Logout();
+        _nav.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        _nav.LocationChanged -= OnLocationChanged;
+    }
+}

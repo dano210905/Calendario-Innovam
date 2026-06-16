@@ -1,0 +1,431 @@
+@page "/usuario"
+@rendermode InteractiveServer
+@inject FrontBlazorTutorial.Services.ApiService Api
+@inject IJSRuntime JS
+
+<PageTitle>Usuarios</PageTitle>
+
+<div class="container mt-4">
+    <h3>Usuarios</h3>
+
+    @* ───────── ALERTA ───────── *@
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @* ───────── BOTON NUEVO ───────── *@
+    @if (!mostrarFormulario)
+    {
+        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nuevo Usuario</button>
+    }
+
+    @* ───────── LIMITE DE REGISTROS ───────── *@
+    <div class="d-flex align-items-center mb-3">
+        <label class="form-label me-2 mb-0">Limite:</label>
+        <input class="form-control me-2" type="number" style="width:100px" @bind="limite" />
+        <button class="btn btn-outline-secondary" @onclick="CargarRegistros">Cargar</button>
+    </div>
+
+    @* ───────── FORMULARIO ───────── *@
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                @(editando ? "Editar Usuario" : "Nuevo Usuario")
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Email</label>
+                        <input class="form-control" type="email" @bind="campoEmail" disabled="@editando" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Contrasena</label>
+                        <input class="form-control" type="password" @bind="campoContrasena" />
+                    </div>
+                </div>
+                <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
+                <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @* ───────── SPINNER ───────── *@
+    @if (cargando)
+    {
+        <div class="d-flex justify-content-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+
+    @* ───────── TABLA ───────── *@
+    @if (!cargando && registros.Any())
+    {
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Email</th>
+                    <th>Contrasena</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var reg in registros)
+                {
+                    <tr>
+                        <td>@reg["email"]</td>
+                        <td>***</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm me-1"
+                                    @onclick="() => EditarRegistro(reg)">Editar</button>
+                            <button class="btn btn-danger btn-sm"
+                                    @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (!cargando && !registros.Any())
+    {
+        <div class="alert alert-warning">No se encontraron registros en la tabla usuario.</div>
+    }
+</div>
+
+<style>
+/*variables*/
+    :root {
+        --navy:      #021e49;
+        --navy-mid:  #1a3a6e;
+        --accent:    #667eea;
+        --accent-2:  #0021db;
+        --radius:    12px;
+        --transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* fondo*/
+    .container {
+        background: linear-gradient(135deg, #021e49 0%, #1a3a6e 50%, #2c4a8a 100%);
+        min-height: 100vh;
+        max-width: 100% !important;
+        padding: 32px 24px !important;
+        margin: 0 !important;
+    }
+
+    /*Titulo*/
+    .text-primary {
+        color: #ffffff !important;
+    }
+    .text-muted {
+        color: rgba(255,255,255,0.65) !important;
+    }
+
+    /* botones*/
+    .btn-primary, .btn-success {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%) !important;
+        border: none !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+    .btn-primary:hover, .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(2,30,73,0.35) !important;
+    }
+    .btn-outline-primary {
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+    .btn-outline-primary:hover {
+        background: var(--accent) !important;
+        color: white !important;
+        transform: translateY(-1px);
+    }
+    .btn-secondary {
+        background: #e2e8f0 !important;
+        border: none !important;
+        color: #475569 !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+    }
+    .btn-warning {
+        background: #fef3c7 !important;
+        border: 1px solid #fcd34d !important;
+        color: #92400e !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+    .btn-warning:hover { background: #fde68a !important; transform: translateY(-1px); }
+    .btn-danger {
+        background: #fee2e2 !important;
+        border: 1px solid #ff1818 !important;
+        color: #361b99 !important;
+        border-radius: var(--radius) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+    .btn-danger:hover { background: #fecaca !important; transform: translateY(-1px); }
+
+    /*hector me la chupa en reversa(tabla)*/
+    .card {
+        border-radius: 20px !important;
+        overflow: hidden !important;
+        border: none !important;
+        box-shadow: 0 20px 50px rgba(2,30,73,0.18) !important;
+        animation: fadeUp 0.4s ease-out;
+    }
+    .card-header.bg-gradient-primary {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%) !important;
+        position: relative;
+        padding: 20px 24px !important;
+    }
+    .card-header.bg-gradient-primary::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+    .card-header h4 { font-weight: 700; font-size: 17px; }
+
+    
+    .table-dark {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid)) !important;
+    }
+    .table-dark th {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        padding: 14px 20px !important;
+        border: none !important;
+    }
+    .table tbody td {
+        padding: 14px 20px !important;
+        vertical-align: middle !important;
+        border-color: #f1f5f9 !important;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8fafc !important;
+        transition: var(--transition) !important;
+    }
+
+   
+    .badge.bg-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+        border-radius: 999px !important;
+        padding: 6px 14px !important;
+        font-size: 13px !important;
+    }
+    .badge.bg-info {
+        background: #eff6ff !important;
+        color: #1d4ed8 !important;
+        border: 1px solid #bfdbfe !important;
+        border-radius: 999px !important;
+        padding: 5px 12px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e2e8f0 !important;
+        border-radius: var(--radius) !important;
+        padding: 10px 14px !important;
+        font-size: 14px !important;
+        transition: var(--transition) !important;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--navy) !important;
+        box-shadow: 0 0 0 3px rgba(2,30,73,0.08) !important;
+    }
+    .form-label.fw-bold {
+        color: #475569 !important;
+        font-size: 13px !important;
+    }
+
+    .alert-success {
+        background: #ecfdf5 !important;
+        border-left: 4px solid #10b981 !important;
+        border-radius: var(--radius) !important;
+        color: #065f46 !important;
+        border-top: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+    .alert-danger {
+        background: #fef2f2 !important;
+        border-left: 4px solid #dc2626 !important;
+        border-radius: var(--radius) !important;
+        color: #991b1b !important;
+        border-top: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+    .alert-warning {
+        background: rgba(255,255,255,0.1) !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        border-radius: var(--radius) !important;
+        color: rgba(255,255,255,0.85) !important;
+    }
+    .alert-info {
+        background: #eff6ff !important;
+        border-left: 4px solid #3b82f6 !important;
+        border-radius: var(--radius) !important;
+        color: #1e40af !important;
+        border-top: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+  
+    .modal-backdrop {
+        background-color: rgba(2,30,73,0.55) !important;
+        backdrop-filter: blur(4px) !important;
+    }
+    .modal-content {
+        border-radius: 20px !important;
+        border: none !important;
+        overflow: hidden !important;
+    }
+    .modal-header.bg-gradient-primary {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%) !important;
+        position: relative;
+    }
+    .modal-header.bg-gradient-primary::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+    .modal-footer {
+        background: #f8fafc !important;
+        border-top: 1px solid #e2e8f0 !important;
+    }
+    .btn-close-white { filter: brightness(10); }
+
+    .spinner-border.text-primary {
+        border-color: rgba(255,255,255,0.3) !important;
+        border-top-color: white !important;
+    }
+
+    /* ── ANIMACIÓN ── */
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 640px) {
+        .container { padding: 16px 12px !important; }
+        .card-header h4 { font-size: 15px; }
+    }
+</style>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private string mensaje = string.Empty;
+    private bool exito = false;
+
+    private string campoEmail = string.Empty;
+    private string campoContrasena = string.Empty;
+    private int? limite = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarRegistros();
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("usuario", limite);
+        cargando = false;
+    }
+
+    private void NuevoRegistro()
+    {
+        editando = false;
+        campoEmail = string.Empty;
+        campoContrasena = string.Empty;
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private void EditarRegistro(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        campoEmail = reg["email"]?.ToString() ?? "";
+        campoContrasena = "";
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private async Task GuardarRegistro()
+    {
+        var datos = new Dictionary<string, object?>
+        {
+            ["email"] = campoEmail,
+            ["contrasena"] = campoContrasena
+        };
+
+        if (editando)
+        {
+            datos.Remove("email");
+            var confirmar = await JS.InvokeAsync<bool>("confirm",
+                $"¿Está seguro de actualizar el Usuario '{campoEmail}'?");
+            if (!confirmar) return;
+            var resultado = await Api.ActualizarAsync("usuario", "email", campoEmail, datos,
+                camposEncriptar: "contrasena");
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+        else
+        {
+            var resultado = await Api.CrearAsync("usuario", datos,
+                camposEncriptar: "contrasena");
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object?> reg)
+    {
+        string email = reg["email"]?.ToString() ?? "";
+        var confirmar = await JS.InvokeAsync<bool>("confirm",
+            $"¿Está seguro de eliminar el Usuario '{email}'?");
+        if (!confirmar) return;
+        var resultado = await Api.EliminarAsync("usuario", "email", email);
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        if (exito)
+            await CargarRegistros();
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormulario = false;
+        mensaje = string.Empty;
+    }
+}

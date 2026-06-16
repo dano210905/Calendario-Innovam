@@ -1,0 +1,58 @@
+@typeparam TItem
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+
+            <div class="d-flex align-items-center position-relative flex-grow-1" style="max-width: 450px;">
+                <i class="bi bi-search position-absolute text-muted" style="left: 15px; z-index: 5;"></i>
+
+                <input class="form-control rounded-pill" type="text" placeholder="@Placeholder"
+                    style="padding-left: 40px; height: 42px; background-color: #f8fafc; border-color: #cbd5e1;"
+                    @value="Texto" @oninput="OnInputChanged" />
+            </div>
+
+            <div class="d-flex align-items-center">
+                <span class="badge bg-primary rounded-pill px-3 py-2 fs-6 shadow-sm">
+                    Total: @ItemsFiltrados.Count
+                </span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<TItem> ItemsOriginales { get; set; } = new();
+    [Parameter] public EventCallback<List<TItem>> OnFiltrar { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Buscar...";
+    [Parameter] public Func<TItem, string, bool> CriterioBusqueda { get; set; } = null!;
+
+    private string Texto { get; set; } = "";
+    private List<TItem> ItemsFiltrados { get; set; } = new();
+
+
+    protected override void OnParametersSet()
+    {
+        Filtrar();
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        Texto = e.Value?.ToString() ?? "";
+        Filtrar();
+        await OnFiltrar.InvokeAsync(ItemsFiltrados);
+    }
+
+    private void Filtrar()
+    {
+        if (string.IsNullOrWhiteSpace(Texto) || CriterioBusqueda == null)
+        {
+            ItemsFiltrados = ItemsOriginales;
+        }
+        else
+        {
+            ItemsFiltrados = ItemsOriginales.Where(item => CriterioBusqueda(item, Texto)).ToList();
+        }
+    }
+}
