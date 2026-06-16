@@ -1,4 +1,4 @@
-# Calendario-Innovam soy la mera verga
+# Calendario-Innovam 
 creacion de un calendario dinamico para la gestion de eventos
 
 USE master; 
