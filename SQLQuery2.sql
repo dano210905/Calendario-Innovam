@@ -521,3 +521,43 @@ GO
 
 --modulo de clientes
 
+CREATE OR ALTER PROCEDURE dbo.sp_CrearProveedor
+    @cedula INT,
+    @nombre VARCHAR(50),
+    @descripcion VARCHAR(100),
+    @contactos VARCHAR(30),
+    @correo VARCHAR(200),
+    @telefono VARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM dbo.proveedores WHERE cedula = @cedula)
+    BEGIN
+        SELECT -1 AS codigo, 'Ya existe un proveedor con esa cédula.' AS mensaje;
+        RETURN;
+    END
+
+    IF LTRIM(RTRIM(@nombre)) = ''
+    BEGIN
+        SELECT -2 AS codigo, 'El nombre es obligatorio.' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            INSERT INTO dbo.proveedores (cedula, nombre, descripcion, contactos, correo, telefono)
+            VALUES (@cedula, @nombre, @descripcion, @contactos, @correo, @telefono);
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Proveedor agregado exitosamente.' AS mensaje, @cedula AS cedula;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje, NULL AS cedula;
+    END CATCH;
+END;
+GO
+
