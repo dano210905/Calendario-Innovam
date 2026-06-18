@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "wOo+DLYQzqg=",
+  "dgSpecHash": "Sly2sSeqNJY=",
   "success": true,
-  "projectFilePath": "D:\\Documentos\\Proyectos C#\\Calendario-Innovam\\Front_innovam\\Front_innovam.csproj",
+  "projectFilePath": "E:\\DATOS\\Escritorio\\Calendario Innovam\\Calendario-Innovam\\Front_innovam\\Front_innovam.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\elque\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.9\\microsoft.aspnetcore.app.internal.assets.10.0.9.nupkg.sha512"
+    "C:\\Users\\Ryzen\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.3\\microsoft.aspnetcore.app.internal.assets.10.0.3.nupkg.sha512"
   ],
   "logs": []
 }

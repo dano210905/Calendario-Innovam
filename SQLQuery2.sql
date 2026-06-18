@@ -14,7 +14,8 @@ GO
 USE ApiGenericaDB;
 GO
 
--- Seguridad: crear tabla usuario (se había quedado comentada)
+--tablas
+
 CREATE TABLE dbo.usuario (
     email VARCHAR(200) PRIMARY KEY,
     contrasena VARCHAR(200) NOT NULL
@@ -60,7 +61,6 @@ CREATE TABLE dbo.clientes (
 );
 GO
 
-
 CREATE TABLE dbo.proveedores (
     cedula INT PRIMARY KEY,
     nombre VARCHAR(50),
@@ -81,7 +81,7 @@ CREATE TABLE dbo.Eventos (
     horarioi DATETIME,
     horariof DATETIME,
     aforomax INT,
-    ubicacion VARCHAR(250), 
+    ubicacion VARCHAR(250),
     estado VARCHAR(15) CHECK (UPPER(estado) IN ('CONFIRMADO','CANCELADO','COTIZADO','FINALIZADO'))
 );
 GO
@@ -89,13 +89,16 @@ GO
 CREATE TABLE dbo.notificaciones (
     idN INT IDENTITY(1,1) PRIMARY KEY,
     id INT FOREIGN KEY REFERENCES dbo.Eventos(id),
-    descripcion VARCHAR(100), 
+    descripcion VARCHAR(100),
     leida BIT DEFAULT 0,
     fecha DATETIME
 );
 GO
 
--- Procedimientos almacenados
+--procedimientos almacenados
+
+--modulo de eventos
+
 CREATE OR ALTER PROCEDURE dbo.sp_CrearEvento
     @titulo VARCHAR(50),
     @descripcion VARCHAR(200),
@@ -113,31 +116,27 @@ BEGIN
     DECLARE @hayConflicto INT = 0;
     DECLARE @msgNotif VARCHAR(100);
 
-    -- Horario lógico
     IF @horarioi >= @horariof
     BEGIN
         SELECT -1 AS codigo, 'El horario de inicio debe ser anterior al horario de fin.' AS mensaje, NULL AS idEvento;
         RETURN;
     END
 
-    -- Cliente existe
     IF NOT EXISTS (SELECT 1 FROM dbo.clientes WHERE cedula = @cedulac)
     BEGIN
         SELECT -2 AS codigo, 'El cliente especificado no existe en el sistema.' AS mensaje, NULL AS idEvento;
         RETURN;
     END
 
-    -- Aforo válido
     IF @aforomax <= 0
     BEGIN
         SELECT -3 AS codigo, 'El aforo máximo debe ser un número positivo.' AS mensaje, NULL AS idEvento;
         RETURN;
     END
 
-    -- Detecta conflicto en misma ubicación y rango de tiempo
     SELECT @hayConflicto = COUNT(*)
     FROM dbo.Eventos
-    WHERE estado NOT IN ('cancelado', 'finalizado')
+    WHERE UPPER(estado) NOT IN ('CANCELADO', 'FINALIZADO')
       AND ubicacion = @ubicacion
       AND (
             (@horarioi >= horarioi AND @horarioi < horariof)
@@ -162,11 +161,10 @@ BEGIN
             )
             VALUES (
                 @cedulac, @titulo, @imagen, @descripcion,
-                @horarioi, @horariof, @aforomax, @ubicacion, 'cotizado'
+                @horarioi, @horariof, @aforomax, @ubicacion, 'COTIZADO'
             );
 
             SET @idEventoNuevo = SCOPE_IDENTITY();
-
             SET @msgNotif = 'Nuevo evento creado: ' + @titulo;
 
             INSERT INTO dbo.notificaciones (id, descripcion, leida, fecha)
@@ -178,7 +176,6 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-
         SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje, NULL AS idEvento;
     END CATCH;
 END;
@@ -201,7 +198,7 @@ BEGIN
     DECLARE @hayConflicto INT = 0;
     DECLARE @msgNotif VARCHAR(100);
 
-    SELECT @estadoActual = estado FROM dbo.Eventos WHERE id = @id;
+    SELECT @estadoActual = UPPER(estado) FROM dbo.Eventos WHERE id = @id;
 
     IF @estadoActual IS NULL
     BEGIN
@@ -209,13 +206,13 @@ BEGIN
         RETURN;
     END
 
-    IF @estadoActual IN ('finalizado', 'cancelado')
+    IF @estadoActual IN ('FINALIZADO', 'CANCELADO')
     BEGIN
         SELECT -2 AS codigo, 'No se puede editar un evento ' + @estadoActual + '.' AS mensaje;
         RETURN;
     END
 
-    IF @estadoActual = 'confirmado'
+    IF @estadoActual = 'CONFIRMADO'
     BEGIN
         IF @horarioi IS NOT NULL OR @horariof IS NOT NULL OR @aforomax IS NOT NULL OR @ubicacion IS NOT NULL OR @imagen IS NOT NULL
         BEGIN
@@ -253,7 +250,7 @@ BEGIN
         SELECT @hayConflicto = COUNT(*)
         FROM dbo.Eventos
         WHERE id != @id
-          AND estado NOT IN ('cancelado', 'finalizado')
+          AND UPPER(estado) NOT IN ('CANCELADO', 'FINALIZADO')
           AND ubicacion = @ubicacionEval
           AND (
                 (@horarioiEval >= horarioi AND @horarioiEval < horariof)
@@ -275,13 +272,13 @@ BEGIN
 
             UPDATE dbo.Eventos
             SET
-                titulo = ISNULL(@titulo, titulo),
+                titulo      = ISNULL(@titulo, titulo),
                 descripcion = ISNULL(@descripcion, descripcion),
-                horarioi = ISNULL(@horarioi, horarioi),
-                horariof = ISNULL(@horariof, horariof),
-                aforomax = ISNULL(@aforomax, aforomax),
-                ubicacion = ISNULL(@ubicacion, ubicacion),
-                imagen = ISNULL(@imagen, imagen)
+                horarioi    = ISNULL(@horarioi, horarioi),
+                horariof    = ISNULL(@horariof, horariof),
+                aforomax    = ISNULL(@aforomax, aforomax),
+                ubicacion   = ISNULL(@ubicacion, ubicacion),
+                imagen      = ISNULL(@imagen, imagen)
             WHERE id = @id;
 
             SET @msgNotif = 'Evento modificado: ' + (SELECT titulo FROM dbo.Eventos WHERE id = @id);
@@ -295,8 +292,232 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-
         SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje;
     END CATCH;
 END;
 GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_BorrarEvento
+    @id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @estadoActual VARCHAR(15);
+    DECLARE @tituloEvento VARCHAR(50);
+    DECLARE @msgNotif VARCHAR(100);
+
+    SELECT @estadoActual = UPPER(estado), @tituloEvento = titulo
+    FROM dbo.Eventos
+    WHERE id = @id;
+
+    IF @estadoActual IS NULL
+    BEGIN
+        SELECT -1 AS codigo, 'El evento especificado no existe.' AS mensaje;
+        RETURN;
+    END
+
+    IF @estadoActual IN ('FINALIZADO', 'CANCELADO')
+    BEGIN
+        SELECT -2 AS codigo, 'No se puede eliminar un evento ' + @estadoActual + '.' AS mensaje;
+        RETURN;
+    END
+
+    IF @estadoActual = 'CONFIRMADO'
+    BEGIN
+        SELECT -3 AS codigo, 'No se puede eliminar un evento confirmado. Use la opción de cancelación.' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            SET @msgNotif = 'Evento eliminado: ' + @tituloEvento;
+
+            INSERT INTO dbo.notificaciones (id, descripcion, leida, fecha)
+            VALUES (@id, @msgNotif, 0, GETDATE());
+
+            DELETE FROM dbo.Eventos WHERE id = @id;
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Evento eliminado exitosamente.' AS mensaje;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje;
+    END CATCH;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_ObtenerEventos
+    @mes INT = NULL,
+    @anio INT = NULL,
+    @estado VARCHAR(15) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @mesEval INT = ISNULL(@mes, MONTH(GETDATE()));
+    DECLARE @anioEval INT = ISNULL(@anio, YEAR(GETDATE()));
+
+    IF @mesEval < 1 OR @mesEval > 12
+    BEGIN
+        SELECT -1 AS codigo, 'El mes debe estar entre 1 y 12.' AS mensaje;
+        RETURN;
+    END
+
+    IF @estado IS NOT NULL AND UPPER(@estado) NOT IN ('COTIZADO', 'CONFIRMADO', 'FINALIZADO', 'CANCELADO')
+    BEGIN
+        SELECT -2 AS codigo, 'Estado no válido.' AS mensaje;
+        RETURN;
+    END
+
+    SELECT
+        id,
+        titulo,
+        descripcion,
+        horarioi,
+        horariof,
+        aforomax,
+        ubicacion,
+        estado,
+        CASE UPPER(estado)
+            WHEN 'COTIZADO'   THEN '#4CAF50'
+            WHEN 'CONFIRMADO' THEN '#2196F3'
+            WHEN 'CANCELADO'  THEN '#F44336'
+            WHEN 'FINALIZADO' THEN '#9E9E9E'
+        END AS colorCalendario
+    FROM dbo.Eventos
+    WHERE
+        MONTH(horarioi) = @mesEval
+        AND YEAR(horarioi) = @anioEval
+        AND (@estado IS NULL OR UPPER(estado) = UPPER(@estado))
+    ORDER BY horarioi ASC;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_ObtenerEventoPorId
+    @id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Eventos WHERE  id = @id)
+    BEGIN
+        SELECT -1 AS codigo, 'El evento especificado no existe.' AS mensaje;
+        RETURN;
+    END
+
+    SELECT
+        e.id,
+        e.titulo,
+        e.descripcion,
+        e.horarioi,
+        e.horariof,
+        e.aforomax,
+        e.ubicacion,
+        e.imagen,
+        e.estado,
+        e.cedulac,
+        e.cedulap,
+        CASE UPPER(e.estado)
+            WHEN 'COTIZADO'   THEN '#4CAF50'
+            WHEN 'CONFIRMADO' THEN '#2196F3'
+            WHEN 'CANCELADO'  THEN '#F44336'
+            WHEN 'FINALIZADO' THEN '#9E9E9E'
+        END AS colorCalendario,
+        CASE UPPER(e.estado)
+            WHEN 'CONFIRMADO' THEN 1
+            WHEN 'FINALIZADO' THEN 1
+            WHEN 'CANCELADO'  THEN 1
+            ELSE 0
+        END AS camposLogisticosBloqueados,
+        CASE UPPER(e.estado)
+            WHEN 'FINALIZADO' THEN 1
+            WHEN 'CANCELADO'  THEN 1
+            ELSE 0
+        END AS soloLectura
+    FROM dbo.Eventos e
+    WHERE e.id = @id;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_CambiarEstadoEvento
+    @id INT,
+    @nuevoEstado VARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @estadoActual VARCHAR(15);
+    DECLARE @tituloEvento VARCHAR(50);
+    DECLARE @msgNotif VARCHAR(100);
+
+    SELECT @estadoActual = UPPER(estado), @tituloEvento = titulo
+    FROM dbo.Eventos
+    WHERE id = @id;
+
+    IF @estadoActual IS NULL
+    BEGIN
+        SELECT -1 AS codigo, 'El evento especificado no existe.' AS mensaje;
+        RETURN;
+    END
+
+    SET @nuevoEstado = UPPER(@nuevoEstado);
+
+    IF @nuevoEstado NOT IN ('COTIZADO', 'CONFIRMADO', 'FINALIZADO', 'CANCELADO')
+    BEGIN
+        SELECT -2 AS codigo, 'Estado no válido.' AS mensaje;
+        RETURN;
+    END
+
+    IF @estadoActual = @nuevoEstado
+    BEGIN
+        SELECT -3 AS codigo, 'El evento ya se encuentra en ese estado.' AS mensaje;
+        RETURN;
+    END
+
+    IF @estadoActual IN ('FINALIZADO', 'CANCELADO')
+    BEGIN
+        SELECT -4 AS codigo, 'No se puede cambiar el estado de un evento ' + @estadoActual + '.' AS mensaje;
+        RETURN;
+    END
+
+    IF @estadoActual = 'COTIZADO' AND @nuevoEstado NOT IN ('CONFIRMADO', 'CANCELADO')
+    BEGIN
+        SELECT -5 AS codigo, 'Transición no permitida: un evento COTIZADO solo puede pasar a CONFIRMADO o CANCELADO.' AS mensaje;
+        RETURN;
+    END
+
+    IF @estadoActual = 'CONFIRMADO' AND @nuevoEstado NOT IN ('FINALIZADO', 'CANCELADO')
+    BEGIN
+        SELECT -6 AS codigo, 'Transición no permitida: un evento CONFIRMADO solo puede pasar a FINALIZADO o CANCELADO.' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            UPDATE dbo.Eventos
+            SET estado = @nuevoEstado
+            WHERE id = @id;
+
+            SET @msgNotif = 'Evento "' + @tituloEvento + '" cambió a estado: ' + @nuevoEstado;
+
+            INSERT INTO dbo.notificaciones (id, descripcion, leida, fecha)
+            VALUES (@id, @msgNotif, 0, GETDATE());
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Estado actualizado exitosamente.' AS mensaje;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje;
+    END CATCH;
+END;
+GO
+
+--modulo de clientes
+
