@@ -22,7 +22,7 @@
 
 @inherits LayoutComponentBase
 @implements IDisposable
-@inject FrontBlazorTutorial.Services.AuthService _auth
+@inject Front_innovam.Services.AuthService _auth
 @inject NavigationManager _nav
 @inject IJSRuntime _js
 
@@ -35,47 +35,7 @@
 }
 else
 {
-    <div class="page">
-        <div class="sidebar">
-            <NavMenu />
-        </div>
-
-        <main>
-            <div class="top-row px-4 d-flex justify-content-between align-items-center">
-                @*<span>Frontend Blazor — API GenericaCsharp</span>*@
-                @* Botón de acceso directo a la gestión de roles *@
-                <a href="/rol-usuario" class="btn btn-sm btn-warning shadow-sm">
-                    <i class="bi bi-shield-lock-fill"></i> Gestion de usuarios
-                </a>
-                @if (_auth.EstaAutenticado)
-                {
-                    <div class="d-flex align-items-center gap-3">
-                        @if (!string.IsNullOrEmpty(_auth.AvatarUrl))
-                        {
-                            <img src="@_auth.AvatarUrl" alt="Avatar"
-                                 style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #dee2e6;" />
-                        }
-                        else
-                        {
-                            <div style="width:36px;height:36px;border-radius:50%;background:#021e49;display:flex;align-items:center;justify-content:center;">
-                                <i class="bi bi-person-fill" style="color:white;font-size:18px;"></i>
-                            </div>
-                        }
-                        <small style="color: #021e49;">@(_auth.NombreUsuario ?? _auth.Usuario)</small>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="_Logout">Cerrar sesion</button>
-                    </div>
-                }
-                else
-                {
-                    <a href="/login" class="btn btn-sm btn-outline-primary">Iniciar sesion</a>
-                }
-            </div>
-
-            <article class="content px-4">
-                @Body
-            </article>
-        </main>
-    </div>
+    
 }
 
 <div id="blazor-error-ui" data-nosnippet>

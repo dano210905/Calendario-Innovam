@@ -1,12 +1,11 @@
 // es el punto de entrada de la aplicación, donde se configura y se inicia la aplicación web. 
 //Aquí se pueden agregar servicios, configurar middleware y definir rutas para la aplicación.
-
-using Front_innovam.components;
+using Front_innovam.Components;
 var builder = WebApplication.CreateBuilder(args);
 
 //esto agrega servicios de Razor Components al contenedor de servicios de la aplicación, lo que permite utilizar componentes interactivos en la aplicación web.
 builder.Services.AddRazorComponents()
-    .addInteractiveServerComponents();
+    .AddInteractiveServerComponents();
 
 
 // esto agrega un servicio HttpClient al contenedor de servicios de la aplicación, configurando su base URL a partir de la configuración de la aplicación (appsettings.json) o utilizando una URL predeterminada si no se encuentra en la configuración.
@@ -14,7 +13,7 @@ var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5035";
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 
 // esto hace que el servicio ApiService esté disponible para inyección de dependencias en toda la aplicación, lo que permite a los componentes y otros servicios utilizarlo para realizar llamadas a la API o manejar la lógica relacionada con la API.
-builder.Services.AddScoped<Front_innovam.services.ApiService>();
+builder.Services.AddScoped<Front_innovam.Services.ApiService>();
 
 var app = builder.Build();
 
@@ -31,6 +30,6 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    . AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode();
 
 app.Run();

@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 
-// esto hace referencia al espacio de nombres FrontBlazorTutorial.Services, que es donde se define la clase ApiService. Este espacio de nombres se utiliza para organizar el código relacionado con los servicios de la aplicación, en este caso, el servicio que interactúa con la API RESTful.
-namespace FrontBlazorTutorial.Services
+// esto hace referencia al espacio de nombres Front_innovam.Services, que es donde se define la clase ApiService. Este espacio de nombres se utiliza para organizar el código relacionado con los servicios de la aplicación, en este caso, el servicio que interactúa con la API RESTful.
+namespace Front_innovam.Services
 {
     public class ApiService
     {

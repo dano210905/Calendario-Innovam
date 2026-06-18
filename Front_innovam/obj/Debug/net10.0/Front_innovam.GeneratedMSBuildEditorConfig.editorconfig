@@ -1,0 +1,80 @@
+is_global = true
+build_property.TargetFramework = net10.0
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v10.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property.EntryPointFilePath = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = Front_innovam
+build_property.RootNamespace = Front_innovam
+build_property.ProjectDir = D:\Documentos\Proyectos C#\Calendario-Innovam\Front_innovam\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 10.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = D:\Documentos\Proyectos C#\Calendario-Innovam\Front_innovam
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 10.0
+build_property.EnableCodeStyleSeverity = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/App.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Buscador.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xCdXNjYWRvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Layout/EmptyLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcRW1wdHlMYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/Error.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xFcnJvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMb2dpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/RecuperarContrasena.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSZWN1cGVyYXJDb250cmFzZW5hLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/Rol-Usuario.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSb2wtVXN1YXJpby5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/Rol.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSb2wucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/Ruta.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSdXRhLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/Usuario.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xVc3VhcmlvLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Pages/Usuarios_registrados.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xVc3Vhcmlvc19yZWdpc3RyYWRvcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Routes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb3V0ZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xfSW1wb3J0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Documentos/Proyectos C\#/Calendario-Innovam/Front_innovam/Components/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTWFpbkxheW91dC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-hj2devmq5p

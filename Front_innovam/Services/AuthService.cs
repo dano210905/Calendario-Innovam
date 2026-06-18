@@ -133,7 +133,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
-namespace FrontBlazorTutorial.Services;
+namespace Front_innovam.Services;
 
 public class AuthService
 {
