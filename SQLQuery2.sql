@@ -561,3 +561,85 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.sp_EditarProveedor
+    @cedulap     INT,
+    @nombre      VARCHAR(50)  = NULL,
+    @descripcion VARCHAR(200) = NULL,
+    @contactos   VARCHAR(30)  = NULL,
+    @correo      VARCHAR(200) = NULL,
+    @telefono    VARCHAR(15)  = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @msgNotif VARCHAR(100);
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.proveedores WHERE cedula = @cedulap)
+    BEGIN
+        SELECT -1 AS codigo, 'El proveedor no existe' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            
+            UPDATE dbo.proveedores
+            SET
+                nombre      = ISNULL(@nombre,      nombre),
+                descripcion = ISNULL(@descripcion, descripcion),
+                contactos   = ISNULL(@contactos,   contactos),
+                correo      = ISNULL(@correo,       correo),
+                telefono    = ISNULL(@telefono,     telefono)
+            WHERE cedula = @cedulap;
+
+           
+            SET @msgNotif = 'Proveedor modificado: ' + (
+                SELECT nombre + ' - ' + CAST(cedula AS VARCHAR(10))
+                FROM dbo.proveedores
+                WHERE cedula = @cedulap
+            );
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Proveedor editado exitosamente.' AS mensaje, @cedulap AS cedula;
+
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje, NULL AS cedula;
+    END CATCH;
+
+END;
+GO
+
+
+CREATE OR ALTER PROCEDURE dbo.sp_BorrarProveedor
+    @cedulap     INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.proveedores WHERE cedula = @cedulap)
+    BEGIN
+        SELECT -1 AS codigo, 'El proveedor no existe' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            DELETE FROM dbo.proveedores WHERE cedula = @cedulap;
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Proveedor eliminado exitosamente.' AS mensaje;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje;
+    END CATCH;
+END;
+GO
+
+

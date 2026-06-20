@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Front_innovam")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c92b064c24dc103a6464066349d9af714fd7508b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+145ea5c66bd9e39322f2e4c8306e587cd2412fcc")]
 [assembly: System.Reflection.AssemblyProductAttribute("Front_innovam")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Front_innovam")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
