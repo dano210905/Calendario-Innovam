@@ -519,8 +519,9 @@ BEGIN
 END;
 GO
 
---modulo de clientes
 
+--modulo de clientes y proveedores
+--proveedores
 CREATE OR ALTER PROCEDURE dbo.sp_CrearProveedor
     @cedula INT,
     @nombre VARCHAR(50),
@@ -642,4 +643,150 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.sp_ObtenerProveedorPorCedula
+    @cedula INT
+AS
+BEGIN
+    SET NOCOUNT ON;
 
+    IF NOT EXISTS (SELECT 1 FROM dbo.proveedores WHERE cedula = @cedula)
+    BEGIN
+        SELECT -1 AS codigo, 'El proveedor especificado no existe.' AS mensaje;
+        RETURN;
+    END
+
+    SELECT
+        p.cedula,
+        p.nombre,
+        p.descripcion,
+        p.contactos,
+        p.correo,
+        p.telefono
+    FROM dbo.proveedores p
+    WHERE p.cedula = @cedula;
+END;
+GO
+ -- clientes
+CREATE OR ALTER PROCEDURE dbo.sp_CrearCliente
+    @cedula INT,
+    @nombre VARCHAR(50),
+    @correo VARCHAR(200),
+    @telefono VARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM dbo.clientes WHERE cedula = @cedula)
+    BEGIN
+        SELECT -1 AS codigo, 'Ya existe un cliente con esa cédula.' AS mensaje;
+        RETURN;
+    END
+
+    IF LTRIM(RTRIM(@nombre)) = ''
+    BEGIN
+        SELECT -2 AS codigo, 'El nombre es obligatorio.' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            INSERT INTO dbo.clientes (cedula, nombre, correo, telefono)
+            VALUES (@cedula, @nombre, @correo, @telefono);
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Cliente agregado exitosamente.' AS mensaje, @cedula AS cedula;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje, NULL AS cedula;
+    END CATCH;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_EditarCliente
+    @cedulap  INT,
+    @nombre   VARCHAR(50)  = NULL,
+    @correo   VARCHAR(200) = NULL,
+    @telefono VARCHAR(15)  = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.clientes WHERE cedula = @cedulap)
+    BEGIN
+        SELECT -1 AS codigo, 'El cliente no existe' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            UPDATE dbo.clientes
+            SET
+                nombre   = ISNULL(@nombre,    nombre),
+                correo   = ISNULL(@correo,    correo),
+                telefono = ISNULL(@telefono,  telefono)
+            WHERE cedula = @cedulap;
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Cliente editado exitosamente.' AS mensaje, @cedulap AS cedula;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje, NULL AS cedula;
+    END CATCH;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_BorrarCliente
+    @cedulap INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.clientes WHERE cedula = @cedulap)
+    BEGIN
+        SELECT -1 AS codigo, 'El cliente no existe' AS mensaje;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+            DELETE FROM dbo.clientes WHERE cedula = @cedulap;
+
+        COMMIT TRANSACTION;
+
+        SELECT 0 AS codigo, 'Cliente eliminado exitosamente.' AS mensaje;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT -99 AS codigo, 'Error interno: ' + ERROR_MESSAGE() AS mensaje;
+    END CATCH;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_ObtenerClientePorCedula
+    @cedula INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.clientes WHERE cedula = @cedula)
+    BEGIN
+        SELECT -1 AS codigo, 'El cliente especificado no existe.' AS mensaje;
+        RETURN;
+    END
+
+    SELECT
+        c.cedula,
+        c.nombre,
+        c.correo,
+        c.telefono
+    FROM dbo.clientes c
+    WHERE c.cedula = @cedula;
+END;
+GO
